@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gelir-Gider Takip</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .tab-button {
+            transition: all 0.3s;
+        }
+        .tab-button.active {
+            background: white;
+            color: #667eea;
+            font-weight: 600;
+        }
+        .income {
+            color: #10b981;
+        }
+        .expense {
+            color: #ef4444;
+        }
+        .card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="max-w-4xl mx-auto">
+        <div class="card rounded-2xl shadow-2xl p-6 mb-4">
+            <h1 class="text-3xl font-bold text-center mb-6 text-purple-700">💰 Gelir-Gider Takip</h1>
+            
+            <!-- Sekmeler -->
+            <div class="flex flex-wrap gap-2 mb-6">
+                <button onclick="switchTab('add')" class="tab-button active flex-1 px-4 py-3 rounded-lg bg-purple-100 text-purple-700" id="tab-add">
+                    ➕ İşlem Ekle
+                </button>
+                <button onclick="switchTab('report')" class="tab-button flex-1 px-4 py-3 rounded-lg bg-purple-100 text-purple-700" id="tab-report">
+                    📊 Raporlar
+                </button>
+                <button onclick="switchTab('history')" class="tab-button flex-1 px-4 py-3 rounded-lg bg-purple-100 text-purple-700" id="tab-history">
+                    📜 Son İşlemler
+                </button>
+                <button onclick="switchTab('recurring')" class="tab-button flex-1 px-4 py-3 rounded-lg bg-purple-100 text-purple-700" id="tab-recurring">
+                    🔄 Düzenli Ödemeler
+                </button>
+            </div>
+
+            <!-- İşlem Ekle Sekmesi -->
+            <div id="content-add" class="tab-content">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">İşlem Tipi</label>
+                        <div class="flex gap-3">
+                            <button onclick="setType('income')" id="type-income" class="flex-1 py-3 rounded-lg bg-green-500 text-white font-semibold">
+                                💵 Gelir
+                            </button>
+                            <button onclick="setType('expense')" id="type-expense" class="flex-1 py-3 rounded-lg bg-gray-300 text-gray-600 font-semibold">
+                                💸 Gider
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Tutar (₺)</label>
+                        <input type="number" id="amount" class="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-purple-500 focus:outline-none" placeholder="0.00" step="0.01">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Kategori</label>
+                        <select id="category" class="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-purple-500 focus:outline-none">
+                            <option value="Maaş">Maaş</option>
+                            <option value="Ek Gelir">Ek Gelir</option>
+                            <option value="Yatırım">Yatırım</option>
+                            <option value="Diğer Gelir">Diğer Gelir</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Açıklama</label>
+                        <input type="text" id="description" class="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-purple-500 focus:outline-none" placeholder="Açıklama giriniz">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Tarih</label>
+                        <input type="date" id="date" class="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-purple-500 focus:outline-none">
+                    </div>
+                    
+                    <button onclick="addTransaction()" class="w-full py-4 rounded-lg bg-purple-600 text-white font-bold text-lg hover:bg-purple-700 transition">
+                        ✅ İşlemi Kaydet
+                    </button>
+                </div>
+            </div>
+
+            <!-- Raporlar Sekmesi -->
+            <div id="content-report" class="tab-content hidden">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Rapor Tipi</label>
+                        <select id="reportType" onchange="updateReport()" class="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-purple-500 focus:outline-none">
+                            <option value="daily">Günlük</option>
+                            <option value="monthly">Aylık</option>
+                            <option value="yearly">Yıllık</option>
+                            <option value="custom">Özel Tarih Aralığı</option>
+                        </select>
+                    </div>
+                    
+                    <div id="customDateRange" class="hidden space-y-3">
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Başlangıç Tarihi</label>
+                            <input type="date" id="startDate" onchange="updateReport()" class="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-purple-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Bitiş Tarihi</label>
+                            <input type="date" id="endDate" onchange="updateReport()" class="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-purple-500 focus:outline-none">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mt-6">
+                        <div class="bg-green-50 p-4 rounded-xl border-2 border-green-200">
+                            <div class="text-sm text-gray-600 mb-1">Toplam Gelir</div>
+                            <div class="text-2xl font-bold income" id="totalIncome">₺0.00</div>
+                        </div>
+                        <div class="bg-red-50 p-4 rounded-xl border-2 border-red-200">
+                            <div class="text-sm text-gray-600 mb-1">Toplam Gider</div>
+                            <div class="text-2xl font-bold expense" id="totalExpense">₺0.00</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-purple-50 p-4 rounded-xl border-2 border-purple-200">
+                        <div class="text-sm text-gray-600 mb-1">Net Bakiye</div>
+                        <div class="text-3xl font-bold text-purple-700" id="netBalance">₺0.00</div>
+                    </div>
+                    
+                    <div id="reportTable" class="mt-6"></div>
+                </div>
+            </div>
+
+            <!-- Son İşlemler Sekmesi -->
+            <div id="content-history" class="tab-content hidden">
+                <div id="historyList" class="space-y-3">
+                    <p class="text-center text-gray-500 py-8">Henüz işlem bulunmuyor</p>
+                </div>
+            </div>
+
+            <!-- Düzenli Ödemeler Sekmesi -->
+            <div id="content-recurring" class="tab-content hidden">
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Ödeme Adı</label>
+                        <input type="text" id="recurringName" class="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-purple-500 focus:outline-none" placeholder="Örn: Kira, Elektrik, İnternet">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Tutar (₺)</label>
+                        <input type="number" id="recurringAmount" class="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-purple-500 focus:outline-none" placeholder="0.00" step="0.01">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Ödeme Günü (Ayın Kaçında)</label>
+                        <input type="number" id="recurringDay" min="1" max="31" class="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-purple-500 focus:outline-none" placeholder="1-31">
+                    </div>
+                    
+                    <button onclick="addRecurring()" class="w-full py-4 rounded-lg bg-purple-600 text-white font-bold text-lg hover:bg-purple-700 transition">
+                        ➕ Düzenli Ödeme Ekle
+                    </button>
+                </div>
+                
+                <div class="bg-purple-50 p-4 rounded-xl border-2 border-purple-200 mb-4">
+                    <div class="text-sm text-gray-600 mb-1">Aylık Toplam Düzenli Gider</div>
+                    <div class="text-2xl font-bold text-purple-700" id="totalRecurring">₺0.00</div>
+                </div>
+                
+                <div id="recurringList" class="space-y-3">
+                    <p class="text-center text-gray-500 py-4">Henüz düzenli ödeme bulunmuyor</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentType = 'income';
+        let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+        let recurringPayments = JSON.parse(localStorage.getItem('recurringPayments')) || [];
+
+        const incomeCategories = ['Maaş', 'Ek Gelir', 'Yatırım', 'Diğer Gelir'];
+        const expenseCategories = ['Kira', 'Faturalar', 'Market', 'Ulaşım', 'Eğlence', 'Sağlık', 'Giyim', 'Yemek', 'Diğer Gider'];
+
+        // Bugünün tarihini varsayılan olarak ayarla
+        document.getElementById('date').valueAsDate = new Date();
+        document.getElementById('startDate').valueAsDate = new Date();
+        document.getElementById('endDate').valueAsDate = new Date();
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+            
+            document.getElementById('tab-' + tab).classList.add('active');
+            document.getElementById('content-' + tab).classList.remove('hidden');
+            
+            if (tab === 'report') updateReport();
+            if (tab === 'history') updateHistory();
+            if (tab === 'recurring') updateRecurringList();
+        }
+
+        function setType(type) {
+            currentType = type;
+            const incomeBtn = document.getElementById('type-income');
+            const expenseBtn = document.getElementById('type-expense');
+            const categorySelect = document.getElementById('category');
+            
+            if (type === 'income') {
+                incomeBtn.className = 'flex-1 py-3 rounded-lg bg-green-500 text-white font-semibold';
+                expenseBtn.className = 'flex-1 py-3 rounded-lg bg-gray-300 text-gray-600 font-semibold';
+                categorySelect.innerHTML = incomeCategories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+            } else {
+                incomeBtn.className = 'flex-1 py-3 rounded-lg bg-gray-300 text-gray-600 font-semibold';
+                expenseBtn.className = 'flex-1 py-3 rounded-lg bg-red-500 text-white font-semibold';
+                categorySelect.innerHTML = expenseCategories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+            }
+        }
+
+        function addTransaction() {
+            const amount = parseFloat(document.getElementById('amount').value);
+            const category = document.getElementById('category').value;
+            const description = document.getElementById('description').value;
+            const date = document.getElementById('date').value;
+            
+            if (!amount || amount <= 0) {
+                alert('Lütfen geçerli bir tutar giriniz!');
+                return;
+            }
+            
+            if (!date) {
+                alert('Lütfen bir tarih seçiniz!');
+                return;
+            }
+            
+            const transaction = {
+                id: Date.now(),
+                type: currentType,
+                amount: amount,
+                category: category,
+                description: description,
+                date: date
+            };
+            
+            transactions.push(transaction);
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+            
+            // Formu temizle
+            document.getElementById('amount').value = '';
+            document.getElementById('description').value = '';
+            
+            alert('İşlem başarıyla kaydedildi! ✅');
+        }
+
+        function deleteTransaction(id) {
+            if (confirm('Bu işlemi silmek istediğinizden emin misiniz?')) {
+                transactions = transactions.filter(t => t.id !== id);
+                localStorage.setItem('transactions', JSON.stringify(transactions));
+                updateHistory();
+            }
+        }
+
+        function updateHistory() {
+            const historyList = document.getElementById('historyList');
+            
+            if (transactions.length === 0) {
+                historyList.innerHTML = '<p class="text-center text-gray-500 py-8">Henüz işlem bulunmuyor</p>';
+                return;
+            }
+            
+            const sortedTransactions = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            historyList.innerHTML = sortedTransactions.map(t => `
+                <div class="bg-white p-4 rounded-lg border-2 ${t.type === 'income' ? 'border-green-200' : 'border-red-200'} flex justify-between items-center">
+                    <div class="flex-1">
+                        <div class="font-semibold ${t.type === 'income' ? 'income' : 'expense'}">${t.type === 'income' ? '💵' : '💸'} ₺${t.amount.toFixed(2)}</div>
+                        <div class="text-sm text-gray-600">${t.category}</div>
+                        ${t.description ? `<div class="text-sm text-gray-500">${t.description}</div>` : ''}
+                        <div class="text-xs text-gray-400 mt-1">${new Date(t.date).toLocaleDateString('tr-TR')}</div>
+                    </div>
+                    <button onclick="deleteTransaction(${t.id})" class="ml-3 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">
+                        🗑️
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function updateReport() {
+            const reportType = document.getElementById('reportType').value;
+            const customDateRange = document.getElementById('customDateRange');
+            
+            if (reportType === 'custom') {
+                customDateRange.classList.remove('hidden');
+            } else {
+                customDateRange.classList.add('hidden');
+            }
+            
+            let filteredTransactions = transactions;
+            const today = new Date();
+            
+            if (reportType === 'daily') {
+                const todayStr = today.toISOString().split('T')[0];
+                filteredTransactions = transactions.filter(t => t.date === todayStr);
+            } else if (reportType === 'monthly') {
+                const currentMonth = today.getMonth();
+                const currentYear = today.getFullYear();
+                filteredTransactions = transactions.filter(t => {
+                    const tDate = new Date(t.date);
+                    return tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear;
+                });
+            } else if (reportType === 'yearly') {
+                const currentYear = today.getFullYear();
+                filteredTransactions = transactions.filter(t => {
+                    const tDate = new Date(t.date);
+                    return tDate.getFullYear() === currentYear;
+                });
+            } else if (reportType === 'custom') {
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                if (startDate && endDate) {
+                    filteredTransactions = transactions.filter(t => t.date >= startDate && t.date <= endDate);
+                }
+            }
+            
+            const totalIncome = filteredTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+            const totalExpense = filteredTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+            const netBalance = totalIncome - totalExpense;
+            
+            document.getElementById('totalIncome').textContent = '₺' + totalIncome.toFixed(2);
+            document.getElementById('totalExpense').textContent = '₺' + totalExpense.toFixed(2);
+            document.getElementById('netBalance').textContent = '₺' + netBalance.toFixed(2);
+            
+            // Kategori bazlı tablo
+            const categoryTotals = {};
+            filteredTransactions.forEach(t => {
+                if (!categoryTotals[t.category]) {
+                    categoryTotals[t.category] = { income: 0, expense: 0 };
+                }
+                if (t.type === 'income') {
+                    categoryTotals[t.category].income += t.amount;
+                } else {
+                    categoryTotals[t.category].expense += t.amount;
+                }
+            });
+            
+            const reportTable = document.getElementById('reportTable');
+            if (Object.keys(categoryTotals).length === 0) {
+                reportTable.innerHTML = '<p class="text-center text-gray-500 py-4">Bu dönemde işlem bulunmuyor</p>';
+            } else {
+                reportTable.innerHTML = `
+                    <div class="bg-white rounded-lg border-2 border-gray-200 overflow-hidden">
+                        <div class="bg-purple-100 px-4 py-3 font-semibold text-purple-800">Kategori Bazlı Özet</div>
+                        ${Object.entries(categoryTotals).map(([cat, vals]) => `
+                            <div class="px-4 py-3 border-b border-gray-200 flex justify-between">
+                                <span class="font-medium">${cat}</span>
+                                <div class="text-right">
+                                    ${vals.income > 0 ? `<div class="income">+₺${vals.income.toFixed(2)}</div>` : ''}
+                                    ${vals.expense > 0 ? `<div class="expense">-₺${vals.expense.toFixed(2)}</div>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+        }
+
+        function addRecurring() {
+            const name = document.getElementById('recurringName').value.trim();
+            const amount = parseFloat(document.getElementById('recurringAmount').value);
+            const day = parseInt(document.getElementById('recurringDay').value);
+            
+            if (!name) {
+                alert('Lütfen ödeme adını giriniz!');
+                return;
+            }
+            
+            if (!amount || amount <= 0) {
+                alert('Lütfen geçerli bir tutar giriniz!');
+                return;
+            }
+            
+            if (!day || day < 1 || day > 31) {
+                alert('Lütfen 1-31 arası geçerli bir gün giriniz!');
+                return;
+            }
+            
+            const recurring = {
+                id: Date.now(),
+                name: name,
+                amount: amount,
+                day: day
+            };
+            
+            recurringPayments.push(recurring);
+            localStorage.setItem('recurringPayments', JSON.stringify(recurringPayments));
+            
+            document.getElementById('recurringName').value = '';
+            document.getElementById('recurringAmount').value = '';
+            document.getElementById('recurringDay').value = '';
+            
+            updateRecurringList();
+            alert('Düzenli ödeme başarıyla eklendi! ✅');
+        }
+
+        function deleteRecurring(id) {
+            if (confirm('Bu düzenli ödemeyi silmek istediğinizden emin misiniz?')) {
+                recurringPayments = recurringPayments.filter(r => r.id !== id);
+                localStorage.setItem('recurringPayments', JSON.stringify(recurringPayments));
+                updateRecurringList();
+            }
+        }
+
+        function updateRecurringList() {
+            const recurringList = document.getElementById('recurringList');
+            const totalRecurring = document.getElementById('totalRecurring');
+            
+            if (recurringPayments.length === 0) {
+                recurringList.innerHTML = '<p class="text-center text-gray-500 py-4">Henüz düzenli ödeme bulunmuyor</p>';
+                totalRecurring.textContent = '₺0.00';
+                return;
+            }
+            
+            const sortedPayments = [...recurringPayments].sort((a, b) => a.day - b.day);
+            const total = recurringPayments.reduce((sum, r) => sum + r.amount, 0);
+            
+            totalRecurring.textContent = '₺' + total.toFixed(2);
+            
+            recurringList.innerHTML = sortedPayments.map(r => `
+                <div class="bg-white p-4 rounded-lg border-2 border-orange-200 flex justify-between items-center">
+                    <div class="flex-1">
+                        <div class="font-semibold text-purple-700">🔄 ${r.name}</div>
+                        <div class="text-sm text-gray-600">Her Ay ${r.day}. Gün</div>
+                        <div class="text-lg font-bold expense mt-1">₺${r.amount.toFixed(2)}</div>
+                    </div>
+                    <button onclick="deleteRecurring(${r.id})" class="ml-3 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">
+                        🗑️
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Sayfa yüklendiğinde raporu güncelle
+        updateReport();
+    </script>
+</body>
+</html>
